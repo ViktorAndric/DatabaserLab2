@@ -1,0 +1,47 @@
+﻿@page "/"
+@using DatabaserLab2.Data;
+@using DatabaserLab2.Models;
+@using Microsoft.EntityFrameworkCore;
+@inject StoreDBContext dbContext
+@inject NavigationManager NavigationManager
+@inject IServiceProvider ServiceProvider
+
+<PageTitle>Index</PageTitle>
+
+<h1>Welcome to BokWorlds</h1>
+<h2>Our stores</h2>
+
+<div class="row">
+	@foreach (var store in stores)
+	{
+		<div class="col-md-4">
+			<div class="card">
+				<img class="card-img-top" src=@store.ImagePath/>
+				<div class=" card-body">
+					<h5 class="card-title">@store.StoreName</h5>
+					<p class="card-text">@store.Adress</p>
+					<p class="card-text">@store.TelephoneNumber</p>
+					<button class="btn btn-primary" onclick="@(() => ShowStoreDetails(store.StoreId))"> Go to Store </button>
+				</div>
+			</div>
+		</div>
+	}
+</div>
+
+@code {
+	private List<Store> stores = new List<Store>();
+
+	protected override async Task OnInitializedAsync()
+	{
+		using (var scope = ServiceProvider.CreateScope())
+		{
+			var scopedDbContext = scope.ServiceProvider.GetRequiredService<StoreDBContext>();
+			stores = await scopedDbContext.Stores.ToListAsync();
+		}
+	}
+
+	private void ShowStoreDetails(int StoreId)
+	{
+		NavigationManager.NavigateTo($"/storedetail/{StoreId}");
+	}
+}

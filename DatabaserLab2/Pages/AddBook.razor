@@ -1,0 +1,188 @@
+﻿@page "/addbook"
+@using Blazored.Toast.Services;
+@using DatabaserLab2.Data;
+@using DatabaserLab2.Models;
+@using Microsoft.EntityFrameworkCore;
+@inject StoreDBContext dbContext
+@inject IToastService ToastService
+
+<PageTitle>Add New Book</PageTitle>
+
+<h1>Add new inventory</h1>
+
+<h4>Add new Genre</h4>
+<EditForm Model="@newCategory" OnValidSubmit="HandleValidSubmiCategory" class="edit-form">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div>
+        <label for="categoryName">Genre name:</label>
+        <InputText id="categoryName" @bind-Value="newCategory.CategoryName" />
+    </div>
+    <div>
+        <button class="btn btn-primary" type="submit">Add Genre</button>
+    </div>
+</EditForm>
+
+<h4>Add new publisher</h4>
+<EditForm Model="@newPublisher" OnValidSubmit="HandleValidSubmitPublisher" class="edit-form">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div>
+        <label for="publisherName">Publisher name:</label>
+        <InputText id="publisherName" @bind-Value="newPublisher.PublisherName" />
+        <button class="btn btn-primary" type="submit">Add Publisher</button>
+    </div>
+</EditForm>
+
+<h4>Add new author</h4>
+<EditForm Model="@newAuthor" OnValidSubmit="HandleValidSubmitAuthor" class="edit-form">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div>
+        <label for="authorFirstName">Author FirstName:</label>
+        <InputText id="authorFirstName" @bind-Value="newAuthor.FirstName"/>
+        <label for="authorLastName">Author Lastname:</label>
+        <InputText id="authorLastName" @bind-Value="newAuthor.LastName"/>
+    </div>
+    <div>
+        <label for="birthdate">Birthdate:</label>
+        <InputDate id="birthdate" @bind-Value="newAuthor.BirthDate"/>
+    </div>
+    <div>
+        <button type="submit">Add Author</button> 
+    </div>
+</EditForm>
+
+<h4>Add new book</h4>
+<EditForm Model="@newBook" OnValidSubmit="HandleValidSubmitBook" class="edit-form">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div>
+        <label for="isbn13">ISBN13:</label>
+        <InputText id="isbn13" placeholder="XXX-X-XX-XXXXXX-X" @bind-Value="newBook.Isbn13"/>
+    </div>
+    <div>
+        <label for="title">Booktitel:</label>
+        <InputText id="title" @bind-Value="newBook.Title" />
+    </div>
+    <div>
+        <label for="author">Author:</label>
+        <select @bind="newBook.AuthorId">
+            @foreach(var author in dbContext.Authors) 
+            {
+                <option value="@author.AuthorId" >@author.FirstName @author.LastName</option>
+            }
+        </select> 
+    </div>
+    <div>
+        <label for="genre">Genre:</label>
+        <select @bind="newBook.CategoryId">
+            @foreach (var genre in dbContext.Categories)
+            {
+                <option value="@genre.CategoryId">@genre.CategoryId @genre.CategoryName</option>
+            }
+        </select>
+    </div>
+    <div>
+        <label for="publisher">Publisher:</label>
+        <select @bind="newBook.PublisherId">
+            @foreach (var publisher in dbContext.Publishers)
+            {
+                <option value="@publisher.PublisherId">@publisher.PublisherId @publisher.PublisherName</option>
+            }
+        </select>
+    </div>
+    <div>
+        <label for="language">Language:</label>
+        <select @bind="newBook.Language">
+            @foreach(var language in DBHelper.Languages) 
+            {
+                <option value="@language">@language</option>
+            }
+        </select>
+    </div>
+    <div>
+        <label for="published">Date of release: </label>
+        <InputDate id="published" @bind-Value="newBook.Published"/>
+    </div>
+    <div>
+        <label for="price">Price:</label>
+        <InputNumber id="price" @bind-Value="newBook.Price" />
+    </div>
+    <div>
+        <label for="imagePath">Image adress</label>
+        <InputText id="imagePath" @bind-Value="newBook.ImagePath"/>
+    </div>
+   
+    <button class="btn btn-primary" type="submit">Add Book</button>
+</EditForm>
+
+@code{
+    private Book newBook = new Book();
+    private Author newAuthor = new Author();
+    private Category newCategory = new Category();
+    private Publisher newPublisher = new Publisher();
+    public string selectedLanguage;
+
+    protected override void OnInitialized()
+    {
+        selectedLanguage = DBHelper.Languages.FirstOrDefault();
+    }
+
+    private async Task HandleValidSubmitBook()
+    {
+        bool bookExists = await dbContext.Books.AnyAsync(b => b.Isbn13 == newBook.Isbn13);
+        if(!bookExists)
+        {
+            await DBHelper.AddBook(newBook);
+            ToastService.ShowSuccess($"{newBook.Title} added successfully");
+            newBook = new Book();
+        }
+        else
+        {
+            ToastService.ShowError($"{newBook.Title} already exists");
+        }
+    }
+    private async Task HandleValidSubmitAuthor()
+    {
+        bool authorExists = await dbContext.Authors.AnyAsync(a => a.FirstName == newAuthor.FirstName && a.LastName == newAuthor.LastName);
+        if(!authorExists)
+        {
+            await DBHelper.AddAuthor(newAuthor);
+            ToastService.ShowSuccess($"{newAuthor.FirstName} {newAuthor.LastName} added successfully");
+            newAuthor = new Author();
+        }
+        else
+        {
+            ToastService.ShowError($"{newAuthor.FirstName} {newAuthor.LastName} already exists");
+        }
+    }
+    private async Task HandleValidSubmitPublisher()
+    {
+        bool publisherExists = await dbContext.Publishers.AnyAsync(p => p.PublisherName == newPublisher.PublisherName);
+        if(!publisherExists)
+        {
+            await DBHelper.AddPublisher(newPublisher);
+            ToastService.ShowSuccess($"{newPublisher.PublisherName} added successfully");
+            newPublisher = new Publisher();
+        }
+        else
+        {
+            ToastService.ShowError($"{newPublisher.PublisherName} already exists");
+        }
+    }
+    private async Task HandleValidSubmiCategory()
+    {
+        bool categoryExists = await dbContext.Categories.AnyAsync(c => c.CategoryName == newCategory.CategoryName);
+        if (!categoryExists)
+        {
+            await DBHelper.AddCategory(newCategory);
+            ToastService.ShowSuccess($"{newCategory.CategoryName} added successfully");
+            newCategory = new Category();
+        }
+        else
+        {
+            ToastService.ShowError($"{newCategory.CategoryName} already exists");
+        }
+    }
+}

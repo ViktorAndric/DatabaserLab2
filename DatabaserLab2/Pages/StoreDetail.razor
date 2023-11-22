@@ -1,0 +1,75 @@
+﻿@page "/storedetail/{StoreId}"
+@using DatabaserLab2.Data;
+@using DatabaserLab2.Models
+@using Microsoft.EntityFrameworkCore;
+@inject StoreDBContext dbContext
+
+
+<h1>Welcome to @store?.StoreName</h1>
+<h3>Books</h3>
+
+<div class="row">
+	@foreach (var book in bookStoreData)
+	{
+		<div class="col-md-4">
+			<div class="card">
+				<img class="card-img-top" src=@book.ImagePath />
+				<div class=" card-body">
+					<h5 class="card-title">@book.Title</h5>
+					<p class="card-text">Written by @book.Author.FirstName @book.Author.LastName</p>
+					<p class="card-text">@book.Price Kr</p>
+					<p class="card-text">@book.StockLevel copies in stock</p>
+					<button class="btn btn-primary" @onclick="() => AddBook(book.Isbn13, book.StoreId, 1)">Add</button>
+					<button class="btn btn-primary" @onclick="() => RemoveBook(book.Isbn13, book.StoreId, 1)">Remove</button>
+					
+				</div>
+			</div>
+		</div>
+	}
+</div>
+
+@code{
+	[Parameter]
+	public string StoreId { get; set; }
+
+	private Store? store;
+	private List<BooksInStore> bookStoreData = new List<BooksInStore>();
+	private int currentStore;
+
+	protected override async Task OnInitializedAsync()
+	{
+		if (int.TryParse(StoreId, out currentStore))
+		{
+			bookStoreData = await dbContext.BookInStore.Include(b => b.Author).Where(b => b.StoreId == currentStore).ToListAsync();
+			store = await dbContext.Stores.FindAsync(currentStore);
+		}
+	}
+
+	private async Task AddBook(string isbn13, int storeId, int quantity)
+	{
+		var updateInventory = dbContext.Inventories.FirstOrDefault(inv => inv.Isbn13 == isbn13 && inv.StoreId == storeId);
+		if(updateInventory != null)
+		{
+			updateInventory.StockLevel += quantity;
+			await dbContext.SaveChangesAsync();
+			bookStoreData = await dbContext.BookInStore.Include(b => b.Author).Where(b => b.StoreId == currentStore).ToListAsync();
+			StateHasChanged();
+			
+		}
+	}
+	private async Task RemoveBook(string isbn13, int storeId, int quantity)
+	{
+		var removeBook = dbContext.Inventories.FirstOrDefault(inv => inv.Isbn13 == isbn13 && inv.StoreId == storeId);
+		if(removeBook != null &&  removeBook.StockLevel > 0)
+		{
+			removeBook.StockLevel -= quantity;
+			await dbContext.SaveChangesAsync();
+			bookStoreData = await dbContext.BookInStore.Include(b => b.Author).Where(b => b.StoreId == currentStore).ToListAsync();
+			StateHasChanged();
+		}
+	}
+}	
+
+
+
+

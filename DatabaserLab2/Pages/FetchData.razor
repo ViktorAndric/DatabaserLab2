@@ -1,0 +1,197 @@
+﻿@page "/fetchdata"
+@using DatabaserLab2.Data;
+@using DatabaserLab2.Models;
+@using Microsoft.EntityFrameworkCore;
+@using Blazored.Toast.Services;
+@inject StoreDBContext dbContext
+@inject IToastService ToastService
+
+<PageTitle>Add Or Remove Book and Author</PageTitle>
+
+<h2>Manage Inventory</h2>
+
+<h4>Add or Delete book to/from store</h4>
+<EditForm Model="@NewBookInStore" OnValidSubmit="HandleValidSubmit" class="edit-form">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div>
+        <label for="book">Choose Boook:</label>
+        <select @bind="@NewBookInStore.Isbn13">
+            <option value=""></option>
+            @foreach (var book in dbContext.Books)
+            {
+                <option value="@book.Isbn13">@book.Title</option>
+            }
+        </select>
+    </div>
+    <div>
+        <label for="store">Choose Store:</label>
+        <select @bind="NewBookInStore.StoreId">
+            @foreach(var store in dbContext.Stores)
+            {
+                <option value="@store.StoreId">@store.StoreName</option>
+            }
+        </select>
+    </div>
+    <label for="stock">Stock:</label>
+    <InputNumber id="stock" @bind-Value="NewBookInStore.StockLevel"/>
+    <button class="btn btn-primary" type="submit"> Add book to Store</button>
+    <button class="btn btn-primary" type="button" @onclick="DeleteBook">Delete chosen book from Store</button>
+</EditForm>
+
+<h4>Remove Author</h4>
+<EditForm Model="choosenAuthor" OnValidSubmit="HandleValidSubmitDeleteAuthor" class="edit-form">
+    <div>
+        <label for="author">Choose Author</label>
+        <select @bind="choosenAuthor.AuthorId">
+            @foreach(var author in dbContext.Authors)
+            {
+                <option value="@author.AuthorId">@author.AuthorId @author.FirstName @author.LastName</option>
+            }
+
+        </select>
+    </div>
+    <button class="btn btn-primary" type="submit">Delete Author</button>
+</EditForm>
+
+<h4>Edit book</h4>
+<EditForm Model="@editBook" OnValidSubmit="HandleValidSubmitEditBook" class="edit-form">
+    <DataAnnotationsValidator/>
+    <ValidationSummary/>
+    <div>
+        <label for="isbn13"> Choose book to edit:</label>
+        <select value="@selectedIsbn" @onchange="OnBookSelected">
+                <option value=""> </option>
+            @foreach (var book in dbContext.Books)
+            {
+                <option value="@book.Isbn13">@book.Title</option>
+            }
+        </select>
+    </div>
+    <div>
+        <label for="isbn13">ISBN:</label>
+        <InputText id="isbn13" @bind-Value="editBook.Isbn13" />
+    </div>
+    <div>
+        <label for="title">Booktitel:</label>
+        <InputText id="title" @bind-Value="editBook.Title" />
+    </div>
+    <div>
+        <label for="author">Author:</label>
+        <select @bind="editBook.AuthorId">
+            @foreach (var author in dbContext.Authors)
+            {
+                <option value="@author.AuthorId">@author.FirstName @author.LastName</option>
+            }
+        </select>
+    </div>
+    <div>
+        <label for="genre">Genre:</label>
+        <select @bind="editBook.CategoryId">
+            @foreach (var genre in dbContext.Categories)
+            {
+                <option value="@genre.CategoryId">@genre.CategoryId. @genre.CategoryName</option>
+            }
+        </select>
+    </div>
+    <div>
+        <label for="publisher">Publisher:</label>
+        <select @bind="editBook.PublisherId">
+            @foreach (var publisher in dbContext.Publishers)
+            {
+                <option value="@publisher.PublisherId">@publisher.PublisherId. @publisher.PublisherName</option>
+            }
+        </select>
+    </div>
+    <div>
+        <label for="language">Language:</label>
+        <select id="language" @bind="editBook.Language" placeholder="@editBook.Language">
+            @foreach (var language in DBHelper.Languages)
+            {
+                <option value="@language">@language</option>
+            }
+        </select>
+    </div>
+    <div>
+            <label for="published">Date of release: </label>
+            <InputDate id="published" @bind-Value="editBook.Published" />
+    </div>
+    <div>
+        <label for="price">Price:</label>
+        <InputNumber id="price" @bind-Value="editBook.Price" />
+    </div>
+    <div>
+        <label for="imagePath">Image adress</label>
+        <InputText id="imagePath" @bind-Value="editBook.ImagePath" />
+    </div>
+
+    <button class="btn btn-primary" type="submit">Edit Book</button>
+</EditForm>
+
+@code {
+    private Book editBook = new Book();
+    private Inventory NewBookInStore = new Inventory();
+    private Author choosenAuthor = new Author();
+    private string selectedIsbn;
+
+    private async Task HandleValidSubmit()
+    {
+        using (var newContext = new StoreDBContext())
+        {
+            var newBook = await newContext.Inventories.FirstOrDefaultAsync(i => i.StoreId == NewBookInStore.StoreId && i.Isbn13 == NewBookInStore.Isbn13);
+
+            if (newBook != null)
+            {
+                newBook.StockLevel += NewBookInStore.StockLevel;
+                await newContext.SaveChangesAsync();
+                ToastService.ShowSuccess("Stocklevel has been updated");
+            }
+            else
+            {
+                await DBHelper.AddBookToStore(NewBookInStore);
+                ToastService.ShowSuccess("Book has been added in the store");
+            }
+        }
+    }
+
+    private async Task DeleteBook()
+    {
+        using (var newContext = new StoreDBContext())
+        {
+            var bookToRemove = await newContext.Inventories.FirstOrDefaultAsync(i => i.StoreId == NewBookInStore.StoreId && i.Isbn13 == NewBookInStore.Isbn13);
+                
+            if (bookToRemove != null)
+            {
+                await DBHelper.DeleteBook(NewBookInStore);
+                ToastService.ShowSuccess("Book has been removed from the choosen store");
+                
+            }
+            else
+            {
+                ToastService.ShowError("Couldn't find the book in the choosen store");
+            }
+        }
+    }
+
+    private async Task HandleValidSubmitDeleteAuthor()
+    {
+        await DBHelper.RemoveAuthor(choosenAuthor);
+        ToastService.ShowSuccess($"{choosenAuthor.FirstName} {choosenAuthor.LastName} has been removed from the database");
+    }
+
+    private async Task HandleValidSubmitEditBook()
+    {
+        await DBHelper.UpdateBook(editBook);
+        ToastService.ShowSuccess($"{editBook.Title} has been updated");
+       
+    }
+
+    private async Task OnBookSelected(ChangeEventArgs e)
+    {
+        selectedIsbn = e.Value.ToString();
+        using (var newContext = new StoreDBContext())
+        {
+            editBook = await newContext.Books.FirstOrDefaultAsync(b => b.Isbn13 == selectedIsbn);
+        }
+    }
+}
