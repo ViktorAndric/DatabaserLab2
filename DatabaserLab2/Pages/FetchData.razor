@@ -159,12 +159,12 @@
         using (var newContext = new StoreDBContext())
         {
             var bookToRemove = await newContext.Inventories.FirstOrDefaultAsync(i => i.StoreId == NewBookInStore.StoreId && i.Isbn13 == NewBookInStore.Isbn13);
-                
+
             if (bookToRemove != null)
             {
                 await DBHelper.DeleteBook(NewBookInStore);
                 ToastService.ShowSuccess("Book has been removed from the choosen store");
-                
+
             }
             else
             {
@@ -175,8 +175,15 @@
 
     private async Task HandleValidSubmitDeleteAuthor()
     {
-        await DBHelper.RemoveAuthor(choosenAuthor);
-        ToastService.ShowSuccess($"{choosenAuthor.FirstName} {choosenAuthor.LastName} has been removed from the database");
+        if(choosenAuthor.AuthorId != 6)
+        {
+            await DBHelper.RemoveAuthor(choosenAuthor);
+            ToastService.ShowSuccess($"{choosenAuthor.FirstName} {choosenAuthor.LastName} has been removed from the database");
+        }
+        else
+        {
+            ToastService.ShowError("This author can not be deleted");
+        }
     }
 
     private async Task HandleValidSubmitEditBook()
